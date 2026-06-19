@@ -60,15 +60,16 @@ contract LiquidityPool is ERC20 {
 
         uint amountInWithFee = amountIn * 997/1000; //0.3%
 
+        //x*y=k
         if(tokenIn == address(tokenA)){
-            uint amountOut = reserveB - (reserveA * reserveB / (reserveA + amountInWithFee));
+            uint amountOut = reserveB * amountInWithFee / (reserveA + amountInWithFee);
             reserveA += amountIn;
             reserveB -= amountOut;
             SafeERC20.safeTransferFrom(_token0, msg.sender, address(this), amountIn);
             SafeERC20.safeTransfer(tokenB, msg.sender, amountOut);
         }else{
 
-            uint amountOut = reserveA - (reserveB * reserveA / (reserveB + amountInWithFee));
+            uint amountOut = amountInWithFee * reserveA / (reserveB + amountInWithFee);
             reserveB += amountIn;
             reserveA -= amountOut;
             SafeERC20.safeTransferFrom(_token0, msg.sender, address(this), amountIn);
