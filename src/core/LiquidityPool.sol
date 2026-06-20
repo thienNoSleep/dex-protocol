@@ -10,9 +10,11 @@ contract LiquidityPool is ERC20 {
     IERC20 public tokenB;
     uint256 public reserveA;
     uint256 public reserveB;
-
-   
-    constructor(IERC20 _tokenA, IERC20 _tokenB) ERC20("Rog LP Token", "RLP") {
+    event LiquidityAdded(address indexed provider, uint amountA, uint amountB, uint liquidityTokenAmount);
+    event LiquidityRemoved(address indexed Cashouted,uint amountA,uint amountB, uint lpBurn);
+    event Swapped(address indexed Swapper, uint amountIn, uint amountOut);
+    
+    constructor(IERC20 _tokenA, IERC20 _tokenB) ERC20("Rog LP Token", "RLP") {  
         tokenA = _tokenA;
         tokenB = _tokenB;
     }
@@ -32,6 +34,7 @@ contract LiquidityPool is ERC20 {
         reserveA += amountA;
         reserveB += amountB;
         _mint(msg.sender, liquidityTokenAmount);
+        emit LiquidityAdded(msg.sender, amountA, amountB, liquidityTokenAmount);
     }
 
     function removeLiquidity(uint liquidityTokenAmount) public {
@@ -48,6 +51,7 @@ contract LiquidityPool is ERC20 {
 
         SafeERC20.safeTransfer(tokenA, msg.sender, amountA);
         SafeERC20.safeTransfer(tokenB, msg.sender, amountB);
+        emit LiquidityRemoved(msg.sender, amountA, amountB, liquidityTokenAmount);
     }
     
     
@@ -67,6 +71,7 @@ contract LiquidityPool is ERC20 {
             reserveB -= amountOut;
             SafeERC20.safeTransferFrom(_token0, msg.sender, address(this), amountIn);
             SafeERC20.safeTransfer(tokenB, msg.sender, amountOut);
+            emit Swapped(msg.sender, amountIn, amountOut);
         }else{
 
             uint amountOut = amountInWithFee * reserveA / (reserveB + amountInWithFee);
@@ -74,9 +79,10 @@ contract LiquidityPool is ERC20 {
             reserveA -= amountOut;
             SafeERC20.safeTransferFrom(_token0, msg.sender, address(this), amountIn);
             SafeERC20.safeTransfer(tokenA, msg.sender, amountOut);
-
+            emit Swapped(msg.sender, amountIn, amountOut);
         }
 
+        
     }
 
 
