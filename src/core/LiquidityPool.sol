@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.26;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -13,6 +13,11 @@ contract LiquidityPool is ERC20 {
     event LiquidityAdded(address indexed provider, uint amountA, uint amountB, uint liquidityTokenAmount);
     event LiquidityRemoved(address indexed Cashouted,uint amountA,uint amountB, uint lpBurn);
     event Swapped(address indexed Swapper, uint amountIn, uint amountOut);
+    error InvalidAmount();
+    error InsufficientLiquidity();
+    error InvalidToken();
+
+
     
     constructor(IERC20 _tokenA, IERC20 _tokenB) ERC20("Rog LP Token", "RLP") {  
         tokenA = _tokenA;
@@ -20,7 +25,7 @@ contract LiquidityPool is ERC20 {
     }
 
     function addLiquidity(uint256 amountA, uint256 amountB)  public {
-        require(amountA > 0 && amountB > 0,"amount must > 0");
+        require(amountA > 0 && amountB > 0, InvalidAmount());
         SafeERC20.safeTransferFrom(tokenA, msg.sender, address(this), amountA);
         SafeERC20.safeTransferFrom(tokenB, msg.sender, address(this), amountB);
 
@@ -30,7 +35,7 @@ contract LiquidityPool is ERC20 {
         }else{
             liquidityTokenAmount = Math.min(amountA * totalSupply() / reserveA, amountB * totalSupply() / reserveB);
         }
-        require(liquidityTokenAmount > 0, "Liquidity must > 0");
+        require(liquidityTokenAmount > 0, InsufficientLiquidity());
         reserveA += amountA;
         reserveB += amountB;
         _mint(msg.sender, liquidityTokenAmount);
@@ -38,11 +43,11 @@ contract LiquidityPool is ERC20 {
     }
 
     function removeLiquidity(uint liquidityTokenAmount) public {
-        require(liquidityTokenAmount > 0 , "Amount LP must greater than zero");
+        require(liquidityTokenAmount > 0 , InvalidAmount());
         uint amountA = liquidityTokenAmount * reserveA / totalSupply();
         uint amountB = liquidityTokenAmount * reserveB / totalSupply();
 
-        require(amountA > 0 && amountB > 0, "amount must greater zero");
+        require(amountA > 0 && amountB > 0, InvalidAmount());
 
         reserveA -= amountA;
         reserveB -= amountB;
@@ -59,8 +64,8 @@ contract LiquidityPool is ERC20 {
 
         address tokenIn = address(_token0);
 
-        require(amountIn > 0,"amount must greater than zero");
-        require(tokenIn == address(tokenA) || tokenIn ==  address(tokenB), "Invalid token");
+        require(amountIn > 0,InvalidAmount());
+        require(tokenIn == address(tokenA) || tokenIn ==  address(tokenB), InvalidToken());
 
         uint amountInWithFee = amountIn * 997/1000; //0.3%
 

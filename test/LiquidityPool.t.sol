@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {LiquidityPool} from "src/core/LiquidityPool.sol";
@@ -13,6 +13,7 @@ contract TestLP is Test{
     MockERC20 public mockERC20;
     RogStringX public rogStringX;
     MockERC20 public  tokenInvalid;
+    
 
     function setUp() public{
         mockERC20 = new MockERC20("BitcoinFake","BTCF");
@@ -66,22 +67,22 @@ contract TestLP is Test{
 
 
     function test_swap_revertOnZero() public {
-        vm.expectRevert(bytes("amount must greater than zero"));
+        vm.expectRevert(LiquidityPool.InvalidAmount.selector);
         liquidityPool.swap(0,rogStringX);
     }
 
     function test_add_liquidity_revertOnZero() public{
-        vm.expectRevert(bytes("amount must > 0"));
+        vm.expectRevert(LiquidityPool.InvalidAmount.selector);
         liquidityPool.addLiquidity(0, 10);
     }
 
     function test_remove_liquidity_revertOnZero() public{
-        vm.expectRevert(bytes("Amount LP must greater than zero"));
+        vm.expectRevert(LiquidityPool.InvalidAmount.selector);
         liquidityPool.removeLiquidity(0);
     }
 
     function test_swap_invalid_token() public{
-        vm.expectRevert(bytes("Invalid token"));
+        vm.expectRevert(LiquidityPool.InvalidToken.selector);
         liquidityPool.swap(100,tokenInvalid);
     }
 
