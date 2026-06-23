@@ -4,8 +4,16 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract LiquidityPool is ERC20 {
+
+   /**  @title LiquidityPool 
+        @author ThienLe
+        @notice   Constant-product (x*y=k) AMM pool for an arbitrary ERC20 pair. Mints LP tokens to providers; 0.3% swap fee accrues to reserves.
+     */
+
+
+contract LiquidityPool is ERC20,ReentrancyGuard {
     IERC20 public tokenA;
     IERC20 public tokenB;
     uint256 public reserveA;
@@ -16,18 +24,25 @@ contract LiquidityPool is ERC20 {
     error InvalidAmount();
     error InsufficientLiquidity();
     error InvalidToken();
-
-
+    
+    /**
+    @param _tokenA First token of the pair
+    @param _tokenB Second token of the pair
+    */
     
     constructor(IERC20 _tokenA, IERC20 _tokenB) ERC20("Rog LP Token", "RLP") {  
         tokenA = _tokenA;
         tokenB = _tokenB;
     }
 
-    function addLiquidity(uint256 amountA, uint256 amountB)  public {
+    /**@notice add liquidity in to pool and mint LP token for provider 
+     * @param amountA amount of tokenA that provider liquidity wanted to add in pool
+     * @param amountB amount of tokenB that provider liquidity wanted to add in pool
+     * @dev First provider (totalSupply==0) mints sqrt(amountA*amountB) to set initial price.
+            Later providers mint min-proportional to reserves; off-ratio excess is absorbed, no extra LP.
+     */
+    function addLiquidity(uint256 amountA, uint256 amountB)  public nonReentrant {
         require(amountA > 0 && amountB > 0, InvalidAmount());
-        SafeERC20.safeTransferFrom(tokenA, msg.sender, address(this), amountA);
-        SafeERC20.safeTransferFrom(tokenB, msg.sender, address(this), amountB);
 
         uint256 liquidityTokenAmount;
         if(totalSupply() == 0){
@@ -39,10 +54,16 @@ contract LiquidityPool is ERC20 {
         reserveA += amountA;
         reserveB += amountB;
         _mint(msg.sender, liquidityTokenAmount);
+        SafeERC20.safeTransferFrom(tokenA, msg.sender, address(this), amountA);
+        SafeERC20.safeTransferFrom(tokenB, msg.sender, address(this), amountB);
+
         emit LiquidityAdded(msg.sender, amountA, amountB, liquidityTokenAmount);
     }
-
-    function removeLiquidity(uint liquidityTokenAmount) public {
+   /**@notice remove liquidity from pool by provider and take back their pair token plus fee automatic
+     * @param liquidityTokenAmount amount of LP token that liquidity provider wanted to remove 
+     * @dev this function is automatic plus fee for provider by swap function so dont need another plus again
+     */
+    function removeLiquidity(uint liquidityTokenAmount) public nonReentrant{
         require(liquidityTokenAmount > 0 , InvalidAmount());
         uint amountA = liquidityTokenAmount * reserveA / totalSupply();
         uint amountB = liquidityTokenAmount * reserveB / totalSupply();
@@ -58,9 +79,13 @@ contract LiquidityPool is ERC20 {
         SafeERC20.safeTransfer(tokenB, msg.sender, amountB);
         emit LiquidityRemoved(msg.sender, amountA, amountB, liquidityTokenAmount);
     }
+    /**@notice swap token to another token in pool
+     * @param amountIn amount of token that trader want to swap
+     * @param _token0  kind of token that trader wanted to trade
+     * @dev amountInWithFee = amountIn * 997/1000 => that amount token want to trade is shrink to 99.7% , 0.3% is fee for liquidity provider
+     */
     
-    
-    function swap(uint amountIn,IERC20 _token0) public{
+    function swap(uint amountIn,IERC20 _token0) public nonReentrant {
 
         address tokenIn = address(_token0);
 
