@@ -19,4 +19,7 @@ docs/
 .env.*
 !.env.example
 
+node_modules/.vscode/
+bin/
 node_modules/
+.vscode/

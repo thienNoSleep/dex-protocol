@@ -17,8 +17,11 @@ contract StakingReward is ReentrancyGuard, Ownable {
     mapping(address => uint256) public rewards;
     mapping(address => uint256) public userRewardPerTokenPaid;
 
-    uint256 constant REWARD_RATE = 100;
-    uint256 public lastUpdateTime;
+    uint256 public rewardRate;
+    uint256 public rewardsDuration = 7 days;
+    uint256 public periodFinish = block.timestamp + rewardsDuration;
+    uint256 public lastUpdateTime = block.timestamp;
+
     uint256 public rewardPerTokenStored;
     uint256 public totalStaked;
 
@@ -33,6 +36,24 @@ contract StakingReward is ReentrancyGuard, Ownable {
         rewardToken = IERC20(_rewardToken);
     }
 
+    function notifyRewardAmount(
+        uint256 reward
+    ) external onlyOwner updateReward(address(0)) {
+        if (block.timestamp >= periodFinish) {
+            rewardRate = reward / rewardsDuration;
+        } else {
+            uint256 leftover = rewardRate * (periodFinish - block.timestamp);
+            rewardRate = (leftover + reward) / rewardsDuration;
+        }
+        require(rewardRate * rewardsDuration <= rewardToken.balanceOf(address(this)),InsufficientRewards());
+        lastUpdateTime = block.timestamp;
+        periodFinish = block.timestamp + rewardsDuration;
+    }
+
+    function lastTimeRewardApplicable() public view returns (uint256) {
+        return block.timestamp < periodFinish ? block.timestamp : periodFinish;
+    }
+
     function erned(address account) public view returns (uint256) {
         return
             (((rewardPerToken() - userRewardPerTokenPaid[account]) *
@@ -45,13 +66,14 @@ contract StakingReward is ReentrancyGuard, Ownable {
         }
         return
             rewardPerTokenStored +
-            (((block.timestamp - lastUpdateTime) * REWARD_RATE * 1e18) /
-                totalStaked);
+            (((lastTimeRewardApplicable() - lastUpdateTime) *
+                rewardRate *
+                1e18) / totalStaked);
     }
 
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = lastTimeRewardApplicable();
         rewards[account] = erned(account);
         userRewardPerTokenPaid[account] = rewardPerTokenStored;
         _;
