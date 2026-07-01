@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakingReward is ReentrancyGuard, Ownable {
@@ -19,8 +15,8 @@ contract StakingReward is ReentrancyGuard, Ownable {
 
     uint256 public rewardRate;
     uint256 public rewardsDuration = 7 days;
-    uint256 public periodFinish = block.timestamp + rewardsDuration;
-    uint256 public lastUpdateTime = block.timestamp;
+    uint256 public periodFinish;
+    uint256 public lastUpdateTime;
 
     uint256 public rewardPerTokenStored;
     uint256 public totalStaked;
@@ -28,24 +24,19 @@ contract StakingReward is ReentrancyGuard, Ownable {
     error InvalidAmount();
     error InsufficientRewards();
 
-    constructor(
-        address _stakingToken,
-        address _rewardToken
-    ) Ownable(msg.sender) {
+    constructor(address _stakingToken, address _rewardToken) Ownable(msg.sender) {
         stakingToken = IERC20(_stakingToken);
         rewardToken = IERC20(_rewardToken);
     }
 
-    function notifyRewardAmount(
-        uint256 reward
-    ) external onlyOwner updateReward(address(0)) {
+    function notifyRewardAmount(uint256 rewardAmount) external onlyOwner updateReward(address(0)) {
         if (block.timestamp >= periodFinish) {
-            rewardRate = reward / rewardsDuration;
+            rewardRate = rewardAmount / rewardsDuration;
         } else {
             uint256 leftover = rewardRate * (periodFinish - block.timestamp);
-            rewardRate = (leftover + reward) / rewardsDuration;
+            rewardRate = (leftover + rewardAmount) / rewardsDuration;
         }
-        require(rewardRate * rewardsDuration <= rewardToken.balanceOf(address(this)),InsufficientRewards());
+        require(rewardRate * rewardsDuration <= rewardToken.balanceOf(address(this)), InsufficientRewards());
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + rewardsDuration;
     }
@@ -55,20 +46,14 @@ contract StakingReward is ReentrancyGuard, Ownable {
     }
 
     function erned(address account) public view returns (uint256) {
-        return
-            (((rewardPerToken() - userRewardPerTokenPaid[account]) *
-                stakedAmount[account]) / 1e18) + rewards[account];
+        return (((rewardPerToken() - userRewardPerTokenPaid[account]) * stakedAmount[account]) / 1e18) + rewards[account];
     }
 
     function rewardPerToken() public view returns (uint256) {
         if (totalStaked == 0) {
             return rewardPerTokenStored;
         }
-        return
-            rewardPerTokenStored +
-            (((lastTimeRewardApplicable() - lastUpdateTime) *
-                rewardRate *
-                1e18) / totalStaked);
+        return rewardPerTokenStored + (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / totalStaked);
     }
 
     modifier updateReward(address account) {
@@ -79,23 +64,14 @@ contract StakingReward is ReentrancyGuard, Ownable {
         _;
     }
 
-    function stake(
-        uint256 amount
-    ) external nonReentrant updateReward(msg.sender) {
+    function stake(uint256 amount) external nonReentrant updateReward(msg.sender) {
         require(amount > 0, InvalidAmount());
         stakedAmount[msg.sender] += amount;
         totalStaked += amount;
-        SafeERC20.safeTransferFrom(
-            stakingToken,
-            msg.sender,
-            address(this),
-            amount
-        );
+        SafeERC20.safeTransferFrom(stakingToken, msg.sender, address(this), amount);
     }
 
-    function withdraw(
-        uint256 amount
-    ) external nonReentrant updateReward(msg.sender) {
+    function withdraw(uint256 amount) external nonReentrant updateReward(msg.sender) {
         require(amount > 0, InvalidAmount());
         stakedAmount[msg.sender] -= amount;
         totalStaked -= amount;

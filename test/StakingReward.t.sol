@@ -19,6 +19,8 @@ contract testStakingReward is Test {
         rewardToken.mint(address(stakingReward), 1000000);
         stakeToken.mint(address(this), 10000000);
 
+        stakingReward.notifyRewardAmount(1000000);
+
         alice = makeAddr("alice");
         stakeToken.mint(alice, 10000);
 
@@ -34,7 +36,7 @@ contract testStakingReward is Test {
         stakingReward.stake(200);
 
         vm.warp(block.timestamp + 1 days);
-        assertEq(stakingReward.erned(alice), 7200000);
+        assertEq(stakingReward.erned(alice), 72000);
         assertEq(stakingReward.totalStaked(), 1200);
         assertEq(stakingReward.stakedAmount(address(this)), 200);
     }
@@ -43,9 +45,15 @@ contract testStakingReward is Test {
         vm.prank(alice);
         stakingReward.withdraw(1000);
         assertEq(stakeToken.balanceOf(alice), 10000);
-        uint256 a = stakingReward.stakedAmount(alice);
-        assertEq(a, 0); // check amount of alice in contract
+        assertEq(stakingReward.stakedAmount(alice), 0);
     }
 
-    function testClaimFunction() public {}
+    function testClaimFunction() public {
+        vm.warp(block.timestamp + 1 days);
+        assertEq(stakingReward.erned(alice), 86400);
+        vm.prank(alice);
+        stakingReward.claimReward();
+        assertEq(rewardToken.balanceOf(alice), 86400);
+        assertEq(stakingReward.rewards(alice), 0);
+    }
 }
