@@ -166,7 +166,7 @@ contract StakingReward is ReentrancyGuard, Ownable {
      */
     function withdraw(uint256 amount) external nonReentrant updateReward(msg.sender) {
         require(amount > 0, InvalidAmount());
-        require(amount <= stakedAmount[msg.sender],InsufficientStake());
+        require(amount <= stakedAmount[msg.sender], InsufficientStake());
         stakedAmount[msg.sender] -= amount;
         totalStaked -= amount;
         SafeERC20.safeTransfer(stakingToken, msg.sender, amount);

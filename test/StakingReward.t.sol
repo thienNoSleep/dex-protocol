@@ -34,7 +34,7 @@ contract testStakingReward is Test {
         stakingReward.stake(1000);
     }
 
-  //happy path
+    //happy path
 
     function testStakingFunction() public {
         stakeToken.approve(address(stakingReward), 200);
@@ -62,7 +62,7 @@ contract testStakingReward is Test {
         assertEq(stakingReward.rewards(alice), 0);
     }
 
-   //unhappy path
+    //unhappy path
 
     // Staking more mid-period must bank the already-earned reward first,
     // then accrue the new stake going forward.
@@ -96,7 +96,7 @@ contract testStakingReward is Test {
         assertEq(stakingReward.rewardRate(), 2);
     }
 
-   //revert
+    //revert
 
     function testStakeZeroReverts() public {
         vm.prank(alice);
